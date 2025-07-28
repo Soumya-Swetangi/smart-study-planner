@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Diary 🌸</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        body {
+            font-family: 'Bubblegum Sans', cursive, sans-serif;
+            background: linear-gradient(to bottom right, #ffcccb, #e6e6fa);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        @keyframes sparkle {
+            0% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes bloom {
+            0% { border-image: linear-gradient(45deg, #ff69b4 0%, #ffb6c1 50%, #ff69b4 100%) 1; }
+            50% { border-image: linear-gradient(45deg, #ffb6c1 0%, #ff69b4 50%, #ffb6c1 100%) 1; }
+            100% { border-image: linear-gradient(45deg, #ff69b4 0%, #ffb6c1 50%, #ff69b4 100%) 1; }
+        }
+        .checklist-item input:checked + span {
+            text-decoration: line-through;
+            color: #ff1493;
+            transition: all 0.3s ease;
+        }
+        .progress-bar {
+            height: 10px;
+            background: #fff0f5;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: #ff69b4;
+            transition: width 0.5s ease;
+        }
+        .vision-slot {
+            border: 2px dashed #ff69b4;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            background: #fff0f5;
+        }
+        .default-image {
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .default-image:hover {
+            transform: scale(1.05);
+            border-color: #ff1493;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center p-4">
+    <h1 class="text-4xl text-pink-500 mb-6 text-center animate-[sparkle_0.5s_ease-in-out]" aria-label="Progress Diary">Progress Diary 🌸</h1>
+    <div id="no-data-warning" class="hidden text-red-500 mb-4 text-center">No subjects or schedule found. Please create a schedule first! 💔</div>
+    <div class="flex flex-col lg:flex-row w-full max-w-6xl gap-4">
+        <!-- Left Panel: Sticky Notes and Progress -->
+        <div class="flex-1 bg-white bg-opacity-90 p-6 rounded-2xl shadow-lg relative">
+            <div class="absolute inset-0 -m-2 border-2 border-dashed border-pink-400 rounded-2xl animate-[bloom_8s_infinite]"></div>
+            <div class="relative">
+                <h3 class="text-xl text-pink-600 mb-4">📝 Sticky Notes & Progress</h3>
+                <div id="stickyContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
+        <!-- Right Panel: Checklists -->
+        <div class="w-full lg:w-1/3 bg-white bg-opacity-90 p-6 rounded-2xl shadow-lg relative">
+            <div class="absolute inset-0 -m-2 border-2 border-dashed border-pink-400 rounded-2xl animate-[bloom_8s_infinite]"></div>
+            <div class="relative">
+                <h3 class="text-xl text-pink-600 mb-4">✅ Checklists</h3>
+                <div id="checklist"></div>
+                <button onclick="toggleGallery()" class="mt-4 px-4 py-2 bg-pink-400 text-white rounded-lg hover:bg-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-300" aria-label="Open vision board">Feeling Down? Open Vision Board! 😢</button>
+                <a href="/schedule" class="block mt-2 text-center text-pink-600 hover:underline" aria-label="Back to schedule">Back to Schedule 📅</a>
+            </div>
+        </div>
+    </div>
+    <!-- Encouragement Popup -->
+    <div id="encouragementPopup" class="hidden fixed inset-0 bg-pink-300 bg-opacity-90 flex items-center justify-center z-[1000] text-pink-600 text-xl p-4 animate-[popIn_0.5s_ease-out]" aria-live="polite"></div>
+    <!-- Vision Board Modal -->
+    <div id="galleryModal" class="hidden fixed inset-0 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center z-[1000] p-4" role="dialog" aria-label="Vision Board Modal">
+        <div class="bg-white bg-opacity-95 p-8 rounded-2xl shadow-2xl max-w-[90vw] max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl text-pink-600 mb-4 text-center">Your Vision Board 🌟</h3>
+            <p id="motivationalQuote" class="text-center text-pink-500 mb-6 italic text-lg animate-[sparkle_0.5s_ease-in-out]"></p>
+            <div id="galleryImages" class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <input type="text" id="addImageUrl" class="p-2 border-2 border-pink-400 rounded-lg bg-pink-50 text-pink-600 flex-1" placeholder="Add image URL..." aria-label="Image URL">
+                <input type="file" id="addImageFile" accept="image/*" class="p-2 border-2 border-pink-400 rounded-lg bg-pink-50 text-pink-600" aria-label="Upload image">
+                <input type="text" id="imageCaption" class="p-2 border-2 border-pink-400 rounded-lg bg-pink-50 text-pink-600 flex-1" placeholder="Add caption..." aria-label="Image caption">
+                <select id="slotSelect" class="p-2 border-2 border-pink-400 rounded-lg bg-pink-50 text-pink-600" aria-label="Select slot">
+                    <option value="0">Slot 1</option>
+                    <option value="1">Slot 2</option>
+                    <option value="2">Slot 3</option>
+                    <option value="3">Slot 4</option>
+                    <option value="4">Slot 5</option>
+                    <option value="5">Slot 6</option>
+                </select>
+                <button onclick="addImage()" class="px-4 py-2 bg-pink-400 text-white rounded-lg hover:bg-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-300" aria-label="Add to vision board">Add to Vision 🌸</button>
+            </div>
+            <div id="imagePreview" class="hidden mb-4 p-4 border-2 border-dashed border-pink-400 rounded-lg">
+                <p class="text-pink-600 mb-2">Preview:</p>
+                <img id="previewImage" class="w-full h-32 object-cover rounded-lg" alt="Image preview">
+            </div>
+            <h4 class="text-lg text-pink-600 mb-4">Choose a Default Image ✨</h4>
+            <div id="defaultImages" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto max-h-64"></div>
+            <button onclick="toggleGallery()" class="mt-6 px-4 py-2 bg-pink-400 text-white rounded-lg hover:bg-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-300" aria-label="Close vision board">Close 😊</button>
+        </div>
+    </div>
+
+    <script>
+        const defaultTemplateImages = [
+            { src: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', caption: 'Dream big!' },
+            { src: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3', caption: 'Stay focused!' },
+            { src: 'https://images.unsplash.com/photo-1528716321680-8152f1b80350', caption: 'Keep learning!' },
+            { src: 'https://images.unsplash.com/photo-1539635278303-d4002c07eae3', caption: 'You’ve got this!' },
+            { src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085', caption: 'Code your future!' },
+            { src: 'https://images.unsplash.com/photo-1507238656349-4623d9e638d8', caption: 'Bloom where you are!' }
+        ];
+        const defaultVisionImages = [
+            { src: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0', caption: 'Chase your dreams!' },
+            { src: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40', caption: 'Work hard, shine bright!' },
+            { src: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f', caption: 'Study with passion!' },
+            { src: 'https://images.unsplash.com/photo-1534972195531-d756b9bfa9f2', caption: 'Build your future!' },
+            { src: 'https://images.unsplash.com/photo-1519681393784-d120267933ba', caption: 'Reach the stars!' },
+            { src: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', caption: 'Stay inspired!' }
+        ];
+        let topics = JSON.parse(localStorage.getItem('subjectTopics')) || {};
+        let notes = JSON.parse(localStorage.getItem('subjectNotes')) || {};
+        let galleryImages = JSON.parse(localStorage.getItem('visionBoardImages')) || defaultTemplateImages;
+        const encouragements = [
+            "Yay! Don’t forget to drink some water! 💧",
+            "Awesome job! Take a stretch break! 🌸",
+            "You’re killing it! Grab a snack! 🍓",
+            "Fantastic! Rest those eyes a bit! ✨",
+            "Super star! Dance a little! 💃"
+        ];
+        const motivationalQuotes = [
+            "Keep shining, you’re unstoppable! 🌟",
+            "Every step forward is a victory! 🚀",
+            "You’ve got this, one task at a time! 💪",
+            "Your hard work is blooming! 🌸",
+            "Stay focused and keep sparkling! ✨"
+        ];
+        const pastelColors = ['bg-pink-100', 'bg-purple-100', 'bg-yellow-100', 'bg-green-100'];
+        let scheduleData = JSON.parse(localStorage.getItem('scheduleData')) || { schedule: [], unallocated: {} };
+
+        window.onload = function() {
+            const subjects = JSON.parse(localStorage.getItem('schedulySubjects')) || [];
+            if (subjects.length === 0 || !scheduleData.schedule.length) {
+                document.getElementById('no-data-warning').classList.remove('hidden');
+            }
+            subjects.forEach((subject, index) => {
+                if (!topics[subject]) topics[subject] = [];
+                createStickyNote(subject, index);
+                createChecklist(subject);
+            });
+            updateGallery();
+            updateDefaultImages();
+            localStorage.setItem('subjectTopics', JSON.stringify(topics));
+            localStorage.setItem('subjectNotes', JSON.stringify(notes));
+            localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+        };
+
+        function createChecklist(subject) {
+            const checklist = document.getElementById('checklist');
+            let subjectDiv = checklist.querySelector(`#${subject}-checklist`);
+            if (!subjectDiv) {
+                subjectDiv = document.createElement('div');
+                subjectDiv.id = `${subject}-checklist`;
+                subjectDiv.className = 'mb-4';
+                const scheduledHours = scheduleData.schedule
+                    .filter(item => item.subject.toLowerCase() === subject.toLowerCase())
+                    .reduce((sum, item) => sum + item.hours, 0);
+                const unallocatedHours = scheduleData.unallocated[subject] || 0;
+                const totalHours = scheduledHours + unallocatedHours;
+                const completedTopics = (topics[subject] || []).filter((_, i) => localStorage.getItem(`${subject}-${i}-checked`) === 'true').length;
+                const progress = topics[subject].length ? (completedTopics / topics[subject].length) * 100 : 0;
+                subjectDiv.innerHTML = `
+                    <h4 class="flex justify-between items-center text-lg text-pink-600 mb-2">
+                        ${subject} 🌟
+                        <button onclick="toggleTopicInput('${subject}')" class="w-6 h-6 bg-pink-400 text-white rounded-full hover:bg-pink-500" aria-label="Add topic for ${subject}">+</button>
+                    </h4>
+                    <div class="progress-bar mb-2">
+                        <div class="progress-bar-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <p class="text-sm text-pink-500">Scheduled: ${scheduledHours.toFixed(1)}h, Unallocated: ${unallocatedHours.toFixed(1)}h</p>
+                `;
+                const topicInput = document.createElement('input');
+                topicInput.className = 'p-2 border-2 border-pink-400 rounded-lg bg-pink-50 text-pink-600 w-full mt-2 hidden';
+                topicInput.id = `topic-input-${subject}`;
+                topicInput.placeholder = `Add topic for ${subject}...`;
+                topicInput.setAttribute('aria-label', `Add topic for ${subject}`);
+                topicInput.onkeypress = (e) => {
+                    if (e.key === 'Enter' && topicInput.value.trim()) {
+                        addTopic(subject, topicInput.value.trim());
+                        topicInput.value = '';
+                    }
+                };
+                subjectDiv.appendChild(topicInput);
+                checklist.appendChild(subjectDiv);
+            }
+            const existingTopics = topics[subject] || [];
+            subjectDiv.querySelectorAll('.checklist-item').forEach(item => item.remove());
+            existingTopics.forEach((topic, index) => {
+                const label = document.createElement('label');
+                label.className = 'checklist-item flex items-center mb-2';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `${subject}-${index}`;
+                checkbox.checked = localStorage.getItem(`${subject}-${index}-checked`) === 'true';
+                checkbox.className = 'mr-2';
+                checkbox.setAttribute('aria-label', `Mark ${topic} as completed`);
+                checkbox.onchange = () => {
+                    localStorage.setItem(`${subject}-${index}-checked`, checkbox.checked);
+                    checkTopic(subject);
+                };
+                label.appendChild(checkbox);
+                const span = document.createElement('span');
+                span.textContent = topic;
+                label.appendChild(span);
+                subjectDiv.appendChild(label);
+            });
+        }
+
+        function toggleTopicInput(subject) {
+            const input = document.getElementById(`topic-input-${subject}`);
+            input.classList.toggle('hidden');
+            if (!input.classList.contains('hidden')) input.focus();
+        }
+
+        function addTopic(subject, topic) {
+            if (!topics[subject].includes(topic)) {
+                topics[subject].push(topic);
+                localStorage.setItem('subjectTopics', JSON.stringify(topics));
+                createChecklist(subject);
+            }
+        }
+
+        function checkTopic(subject) {
+            const allChecked = topics[subject].every((_, i) => {
+                const checkbox = document.getElementById(`${subject}-${i}`);
+                return checkbox && checkbox.checked;
+            });
+            if (allChecked) {
+                const encouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+                const popup = document.getElementById('encouragementPopup');
+                popup.textContent = encouragement;
+                popup.classList.remove('hidden');
+                setTimeout(() => popup.classList.add('hidden'), 3000);
+            }
+            const allTopicsChecked = Object.keys(topics).every(subj => {
+                return topics[subj].every((_, i) => localStorage.getItem(`${subj}-${i}-checked`) === 'true');
+            });
+            if (allTopicsChecked) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            }
+            createChecklist(subject);
+        }
+
+        function createStickyNote(subject, index) {
+            const container = document.getElementById('stickyContainer');
+            const note = document.createElement('div');
+            note.className = `p-4 rounded-lg ${pastelColors[index % pastelColors.length]} shadow-md flex flex-col`;
+            const textarea = document.createElement('textarea');
+            textarea.className = 'p-2 border-2 border-pink-400 rounded-lg bg-transparent text-pink-600 flex-1 resize-none';
+            textarea.placeholder = `Notes/Doubts for ${subject}...`;
+            textarea.value = notes[subject] || '';
+            textarea.setAttribute('aria-label', `Notes for ${subject}`);
+            textarea.onchange = () => {
+                notes[subject] = textarea.value;
+                localStorage.setItem('subjectNotes', JSON.stringify(notes));
+            };
+            note.appendChild(textarea);
+            container.appendChild(note);
+        }
+
+        function toggleGallery() {
+            const modal = document.getElementById('galleryModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                const quote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+                document.getElementById('motivationalQuote').textContent = quote;
+                document.getElementById('imagePreview').classList.add('hidden');
+            }
+        }
+
+        function addImage() {
+            const urlInput = document.getElementById('addImageUrl');
+            const fileInput = document.getElementById('addImageFile');
+            const captionInput = document.getElementById('imageCaption');
+            const slotIndex = parseInt(document.getElementById('slotSelect').value);
+            const caption = captionInput.value.trim() || 'Inspiration';
+            let newImage = null;
+            if (urlInput.value.trim()) {
+                const url = urlInput.value.trim();
+                newImage = { src: url, caption };
+            } else if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target.result;
+                    galleryImages[slotIndex] = { src: base64, caption };
+                    localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+                    updateGallery();
+                };
+                reader.readAsDataURL(file);
+                fileInput.value = '';
+                urlInput.value = '';
+                captionInput.value = '';
+                document.getElementById('imagePreview').classList.add('hidden');
+                return;
+            }
+            if (newImage) {
+                galleryImages[slotIndex] = newImage;
+                localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+                updateGallery();
+                urlInput.value = '';
+                captionInput.value = '';
+                document.getElementById('imagePreview').classList.add('hidden');
+            }
+        }
+
+        function updateGallery() {
+            const gallery = document.getElementById('galleryImages');
+            gallery.innerHTML = '';
+            galleryImages.forEach((image, index) => {
+                const container = document.createElement('div');
+                container.className = 'vision-slot relative group';
+                const img = document.createElement('img');
+                img.src = image.src;
+                img.alt = image.caption;
+                img.className = 'w-full h-64 object-cover rounded-lg';
+                const caption = document.createElement('div');
+                caption.className = 'absolute bottom-0 left-0 right-0 bg-pink-400 bg-opacity-75 text-white text-center py-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300';
+                caption.textContent = image.caption;
+                caption.ondblclick = () => {
+                    const newCaption = prompt('Edit caption:', image.caption);
+                    if (newCaption && newCaption.trim()) {
+                        galleryImages[index].caption = newCaption.trim();
+                        localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+                        updateGallery();
+                    }
+                };
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hidden group-hover:block';
+                deleteBtn.textContent = '✕';
+                deleteBtn.setAttribute('aria-label', `Remove image from slot ${index + 1}`);
+                deleteBtn.onclick = () => {
+                    galleryImages[index] = defaultTemplateImages[index];
+                    localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+                    updateGallery();
+                };
+                container.appendChild(img);
+                container.appendChild(caption);
+                container.appendChild(deleteBtn);
+                gallery.appendChild(container);
+            });
+            new Sortable(gallery, {
+                animation: 150,
+                ghostClass: 'opacity-50',
+                onEnd: (evt) => {
+                    const [moved] = galleryImages.splice(evt.oldIndex, 1);
+                    galleryImages.splice(evt.newIndex, 0, moved);
+                    localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+                    updateGallery();
+                }
+            });
+        }
+
+        function updateDefaultImages() {
+            const defaultGallery = document.getElementById('defaultImages');
+            defaultGallery.innerHTML = '';
+            defaultVisionImages.forEach((image, index) => {
+                const container = document.createElement('div');
+                container.className = 'relative';
+                const img = document.createElement('img');
+                img.src = image.src;
+                img.alt = image.caption;
+                img.className = 'w-full h-32 object-cover rounded-lg border-2 border-pink-400 default-image cursor-pointer';
+                img.onclick = () => {
+                    const slotIndex = parseInt(document.getElementById('slotSelect').value);
+                    galleryImages[slotIndex] = { src: image.src, caption: image.caption };
+                    localStorage.setItem('visionBoardImages', JSON.stringify(galleryImages));
+                    updateGallery();
+                };
+                const caption = document.createElement('div');
+                caption.className = 'absolute bottom-0 left-0 right-0 bg-pink-400 bg-opacity-75 text-white text-center py-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300';
+                caption.textContent = image.caption;
+                container.appendChild(img);
+                container.appendChild(caption);
+                defaultGallery.appendChild(container);
+            });
+        }
+
+        function previewImage() {
+            const urlInput = document.getElementById('addImageUrl');
+            const fileInput = document.getElementById('addImageFile');
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImage');
+            if (urlInput.value.trim()) {
+                previewImg.src = urlInput.value.trim();
+                preview.classList.remove('hidden');
+            } else if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('addImageUrl').addEventListener('input', previewImage);
+        document.getElementById('addImageFile').addEventListener('change', previewImage);
+    </script>
+</body>
+</html>
